@@ -40,15 +40,15 @@ class Robot():
 class Sensor():
     #Setear los sensores leidos
     def setSensor(self, encoderD, encoderI, ult1, ult2, ult3):
-        self.ticksD = encoderD
-        self.ticksL = encoderI
+        self.uD = encoderD
+        self.uL = encoderI
         self.u1 = ult1
         self.u2 = ult2
         self.u3 = ult3
         
     def getSensor(self):
-        tD = self.ticksD 
-        tI = self.ticksI
+        tD = self.uD
+        tI = self.uL
         u11 = self.u1
         u21 = self.u2
         u31 = self.u3
@@ -133,18 +133,10 @@ def AvoidObstacle(robot, sensor, errores):
     w = K_p*e_P + K_i*e_I + K_d*e_D
     return [v, w, e_I, e_k]
     
-def Odometria (robot, sensor, prev_ticks):
+def Odometria (robot, sensor):
     
-    R_ticks = 260       #Resolucion del encoder    
-    
-    prev_tD = prev_ticks[0]
-    prev_tI = prev_ticks[1]    
-    
-    tD =  sensor.ticksD
-    tI =  sensor.ticksL
-    
-    dR = 2*PI*robot.radio*(prev_tD - tD)/R_ticks
-    dL = 2*PI*robot.radio*(prev_tI- tI)/R_ticks
+    dR = sensor.uD    
+    dL = sensor.uL
     
     dC = (dR + dL)/2
     phi = (dR - dL)/robot.longitud
@@ -154,8 +146,6 @@ def Odometria (robot, sensor, prev_ticks):
     theta_new = robot.theta + phi
     
     robot.setPose(x_new,y_new,theta_new)
-    
-    return [tD, tI]
     
 def Calc_Potencia(v_max, u_r, u_l):
     #Se ve el sentido de giro del movil
@@ -173,10 +163,48 @@ def Calc_Potencia(v_max, u_r, u_l):
     Pot_D = int((ur/v_max)*100)
     Pot_I = int((ul/v_max)*100)
     
+    if Pot_D <10:
+        Pot_D='0'+str(Pot_D)
+    elif (Pot_D >= 10) and (Pot_D <= 99):
+        Pot_D=str(Pot_D)
+    else:
+        Pot_D=str(99)
+    
+    if Pot_I <10:
+        Pot_I='0'+str(Pot_I)
+    elif (Pot_I >= 10) and (Pot_I <= 99):
+        Pot_I=str(Pot_I)
+    else:
+        Pot_I=str(99)
+ 
     return [sentido, Pot_D, Pot_I]
     
 def Enviar_Datos(ser,sentido, pot_r, pot_i):
-    ser.write("$P"+str(sentido)+str(pot_r)+str(pot_i)+"#\n")
+    ser.write("$P"+sentido+pot_r+pot_i+"#\n")
+    
+def leer_sensores(ser):
+    read_serial=ser.readline()
+    sensores = str(read_serial)
+    if len(sensores)>7:
+        if (sensores[0]=='$' and sensores[1]=='P'):
+            if sensores[11]=='#':
+                signo1=int(sensores[1])
+                e1e=int(sensores[2:5])
+                signo2=int(sensores[6])
+                e2e=int(sensores[7:10])
+            else:
+                print "nada1"
+        else:
+            print "nada2"
+    else:
+        print "nada3"
+    e1=e1e/10.0
+    e2=e2e/10.0
+    if signo1=='-':
+	ei=e1*-1
+    if signo2=='-':
+        ed=e2*-1
+    return [ei,ed]
     
 # Inicalizamos la posicion inicial del robot
 
